@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Leaderboard & Questions Management</title>
+    <style>
+        /* General styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f4;
+        }
+
+        h1,
+        h2,
+        h3 {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        #login-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            width: 300px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        #login-box input {
+            width: 90%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        #login-box button {
+            padding: 10px 20px;
+            border: none;
+            background: #4CAF50;
+            color: #fff;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        /* Navigation Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 0 10px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .tab.active {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #4CAF50;
+            color: #fff;
+        }
+
+        tr:hover {
+            background: #f1f1f1;
+        }
+
+        button {
+            padding: 5px 10px;
+            margin: 0 3px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .edit-btn {
+            background: #2196F3;
+            color: #fff;
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: #fff;
+        }
+
+        .save-btn {
+            background: #4CAF50;
+            color: #fff;
+        }
+
+        .cancel-btn {
+            background: #9E9E9E;
+            color: #fff;
+        }
+
+        /* Form styling */
+        form {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        form input,
+        form button {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Overlay -->
+    <div id="login-overlay">
+        <div id="login-box">
+            <h2>Admin Login</h2>
+            <input type="text" id="admin-username" placeholder="Username" />
+            <input type="password" id="admin-password" placeholder="Password" />
+            <button id="login-btn">Login</button>
+        </div>
+    </div>
+
+    <!-- Panel Utama -->
+    <div id="admin-panel" style="display:none;">
+        <div class="container">
+            <h1>Admin Panel</h1>
+            <!-- Tabs Navigasi -->
+            <div class="tabs">
+                <div class="tab active" data-target="leaderboard-section">Leaderboard</div>
+                <div class="tab" data-target="questions-section">Manage Questions</div>
+            </div>
+            <!-- Section Leaderboard -->
+            <div id="leaderboard-section">
+                <h2>Leaderboard Management</h2>
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama</th>
+                            <th>Tanggal, Waktu</th>
+                            <th>Skor</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data leaderboard akan dimuat di sini -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Section Questions -->
+            <div id="questions-section" style="display:none;">
+                <h2>Manage Questions</h2>
+                <!-- Form untuk menambahkan soal baru -->
+                <form id="add-question-form">
+                    <h3>Tambah Soal Baru</h3>
+                    <input type="text" id="q-name" placeholder="Nama Budaya/Tempat" required>
+                    <input type="text" id="q-coord" placeholder="Koordinat (format: lat, lng)" required>
+                    <input type="text" id="q-image" placeholder="URL Gambar (opsional)">
+                    <button type="submit">Tambah Soal</button>
+                </form>
+                <!-- Tabel untuk menampilkan soal yang sudah ada -->
+                <table id="questions-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Nama</th>
+                            <th>Skor</th>
+                            <th>Tanggal & Waktu</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data soal akan dimuat di sini -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Firebase dan Logika Admin Panel -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import {
+            getFirestore,
+            collection,
+            query,
+            orderBy,
+            getDocs,
+            deleteDoc,
+            updateDoc,
+            addDoc,
+            doc
+        } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        // Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfv1X820E0pA6xr12GBBCof50yiJt-3A0",
+            authDomain: "p5-db-522b6.firebaseapp.com",
+            projectId: "p5-db-522b6",
+            storageBucket: "p5-db-522b6.firebasestorage.app",
+            messagingSenderId: "541847612293",
+            appId: "1:541847612293:web:5e5edd184b3811253472ec",
+            measurementId: "G-X5YG6G9J4B"
+        };
+
+        const appFirebase = initializeApp(firebaseConfig);
+        const db = getFirestore(appFirebase);
+
+        // Fungsi Login sederhana
+        const loginOverlay = document.getElementById("login-overlay");
+        const loginBtn = document.getElementById("login-btn");
+
+        loginBtn.addEventListener("click", function () {
+            const username = document.getElementById("admin-username").value.trim();
+            const password = document.getElementById("admin-password").value.trim();
+            if (username === "admin" && password === "admin123") {
+                loginOverlay.style.display = "none";
+                document.getElementById("admin-panel").style.display = "block";
+                loadLeaderboard();
+                loadQuestions();
+            } else {
+                alert("Kredensial tidak valid. Silakan coba lagi.");
+            }
+        });
+
+        /* === Leaderboard Management === */
+        async function loadLeaderboard() {
+            const tableBody = document.querySelector("#leaderboard-table tbody");
+            tableBody.innerHTML = "";
+            try {
+                const q = query(collection(db, "scores"), orderBy("score", "desc"));
+                const querySnapshot = await getDocs(q);
+                let no = 1;
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const tr = document.createElement("tr");
+                    tr.setAttribute("data-id", docSnap.id);
+                    tr.innerHTML = `
+        <td>${no++}</td>
+        <td class="name-cell">${data.name}</td>
+        <td class="score-cell">${data.score}</td>
+        <td class="date-cell">${data.completedAt || ''}</td>
+        <td>
+          <button class="edit-btn">Edit</button>
+          <button class="delete-btn">Delete</button>
+        </td>
+      `;
+                    tableBody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Error loading leaderboard:", error);
+            }
+        }
+
+
+        // Delegasi event untuk Leaderboard (edit & delete)
+        document.querySelector("#leaderboard-table").addEventListener("click", async function (e) {
+            const target = e.target;
+            const tr = target.closest("tr");
+            if (!tr) return;
+            const docId = tr.getAttribute("data-id");
+
+            // Delete Leaderboard Data
+            if (target.classList.contains("delete-btn")) {
+                if (confirm("Anda yakin ingin menghapus data ini?")) {
+                    try {
+                        await deleteDoc(doc(db, "scores", docId));
+                        loadLeaderboard();
+                    } catch (error) {
+                        console.error("Error deleting document:", error);
+                    }
+                }
+            }
+            // Mulai proses edit leaderboard
+            else if (target.classList.contains("edit-btn")) {
+                const nameCell = tr.querySelector(".name-cell");
+                const scoreCell = tr.querySelector(".score-cell");
+                const currentName = nameCell.textContent;
+                const currentScore = scoreCell.textContent;
+                nameCell.innerHTML = `<input type="text" value="${currentName}" />`;
+                scoreCell.innerHTML = `<input type="number" value="${currentScore}" />`;
+                const actionCell = tr.querySelector("td:last-child");
+                actionCell.innerHTML = `
+          <button class="save-btn">Save</button>
+          <button class="cancel-btn">Cancel</button>
+        `;
+            }
+            // Batalkan proses edit
+            else if (target.classList.contains("cancel-btn")) {
+                loadLeaderboard();
+            }
+            // Simpan data edit leaderboard
+            else if (target.classList.contains("save-btn")) {
+                const nameInput = tr.querySelector(".name-cell input");
+                const scoreInput = tr.querySelector(".score-cell input");
+                const newName = nameInput.value.trim();
+                const newScore = parseInt(scoreInput.value);
+                if (!newName || isNaN(newScore)) {
+                    alert("Nama atau skor tidak valid.");
+                    return;
+                }
+                try {
+                    await updateDoc(doc(db, "scores", docId), {
+                        name: newName,
+                        score: newScore
+                    });
+                    loadLeaderboard();
+                } catch (error) {
+                    console.error("Error updating document:", error);
+                }
+            }
+        });
+
+        /* === Questions Management === */
+        async function loadQuestions() {
+            const tableBody = document.querySelector("#questions-table tbody");
+            tableBody.innerHTML = "";
+            try {
+                const q = query(collection(db, "questions"), orderBy("name", "asc"));
+                const querySnapshot = await getDocs(q);
+                let no = 1;
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const tr = document.createElement("tr");
+                    tr.setAttribute("data-id", docSnap.id);
+                    tr.innerHTML = `
+            <td>${no++}</td>
+            <td class="name-cell">${data.name}</td>
+            <td class="coord-cell">${data.coord}</td>
+            <td class="image-cell">${data.image || ""}</td>
+            <td>
+              <button class="edit-btn">Edit</button>
+              <button class="delete-btn">Delete</button>
+            </td>
+          `;
+                    tableBody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Error loading questions:", error);
+            }
+        }
+
+        // Tambah soal baru
+        const addForm = document.getElementById("add-question-form");
+        addForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const name = document.getElementById("q-name").value.trim();
+            const coord = document.getElementById("q-coord").value.trim();
+            const image = document.getElementById("q-image").value.trim();
+            if (!name || !coord) {
+                alert("Nama dan koordinat wajib diisi!");
+                return;
+            }
+            try {
+                await addDoc(collection(db, "questions"), {
+                    name,
+                    coord,  // Simpan dalam format string "lat, lng"
+                    image
+                });
+                addForm.reset();
+                loadQuestions();
+            } catch (error) {
+                console.error("Error adding question:", error);
+            }
+        });
+
+        // Delegasi event untuk Questions (edit & delete)
+        document.querySelector("#questions-table").addEventListener("click", async function (e) {
+            const target = e.target;
+            const tr = target.closest("tr");
+            if (!tr) return;
+            const docId = tr.getAttribute("data-id");
+
+            // Delete soal
+            if (target.classList.contains("delete-btn")) {
+                if (confirm("Anda yakin ingin menghapus soal ini?")) {
+                    try {
+                        await deleteDoc(doc(db, "questions", docId));
+                        loadQuestions();
+                    } catch (error) {
+                        console.error("Error deleting question:", error);
+                    }
+                }
+            }
+            // Mulai edit soal
+            else if (target.classList.contains("edit-btn")) {
+                const nameCell = tr.querySelector(".name-cell");
+                const coordCell = tr.querySelector(".coord-cell");
+                const imageCell = tr.querySelector(".image-cell");
+                const currentName = nameCell.textContent;
+                const currentCoord = coordCell.textContent;
+                const currentImage = imageCell.textContent;
+                nameCell.innerHTML = `<input type="text" value="${currentName}" />`;
+                coordCell.innerHTML = `<input type="text" value="${currentCoord}" />`;
+                imageCell.innerHTML = `<input type="text" value="${currentImage}" />`;
+                const actionCell = tr.querySelector("td:last-child");
+                actionCell.innerHTML = `
+          <button class="save-btn">Save</button>
+          <button class="cancel-btn">Cancel</button>
+        `;
+            }
+            // Batalkan edit soal
+            else if (target.classList.contains("cancel-btn")) {
+                loadQuestions();
+            }
+            // Simpan edit soal
+            else if (target.classList.contains("save-btn")) {
+                const nameInput = tr.querySelector(".name-cell input");
+                const coordInput = tr.querySelector(".coord-cell input");
+                const imageInput = tr.querySelector(".image-cell input");
+                const newName = nameInput.value.trim();
+                const newCoord = coordInput.value.trim();
+                const newImage = imageInput.value.trim();
+                if (!newName || !newCoord) {
+                    alert("Nama dan koordinat wajib diisi!");
+                    return;
+                }
+                try {
+                    await updateDoc(doc(db, "questions", docId), {
+                        name: newName,
+                        coord: newCoord,
+                        image: newImage
+                    });
+                    loadQuestions();
+                } catch (error) {
+                    console.error("Error updating question:", error);
+                }
+            }
+        });
+
+        /* === Navigasi Tabs === */
+        const tabs = document.querySelectorAll(".tab");
+        tabs.forEach(tab => {
+            tab.addEventListener("click", () => {
+                // Hapus kelas active dari semua tab
+                tabs.forEach(t => t.classList.remove("active"));
+                tab.classList.add("active");
+                // Tampilkan konten yang sesuai
+                const target = tab.getAttribute("data-target");
+                if (target === "leaderboard-section") {
+                    document.getElementById("leaderboard-section").style.display = "block";
+                    document.getElementById("questions-section").style.display = "none";
+                } else if (target === "questions-section") {
+                    document.getElementById("leaderboard-section").style.display = "none";
+                    document.getElementById("questions-section").style.display = "block";
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

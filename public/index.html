@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <!-- Meta viewport untuk tampilan responsif -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tebak Koordinat Budaya Nusantara</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    /* Reset dan pengaturan dasar */
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Peta full screen */
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 100vw;
+      z-index: 1;
+    }
+
+    /* Overlay UI (Start screen, Game Over) */
+    .overlay {
+      position: absolute;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border: 2px solid #ccc;
+      border-radius: 15px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    /* Start Screen */
+    #start-screen {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 90%;
+    }
+
+    #start-screen h2 {
+      margin-top: 0;
+    }
+
+    #player-name-input {
+      font-size: 12px;
+      padding: 5px;
+      width: 80%;
+      margin: 10px 0;
+    }
+
+    #start-btn {
+      padding: 15px 20px;
+      font-size: 14px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    /* Game UI */
+    .game-ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(240, 240, 240, 0.9);
+      padding: 5px;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      display: none;
+      font-size: 12px;
+      max-width: 315px;
+      box-sizing: border-box;
+    }
+
+    .game-ui h3 {
+      margin-top: 0;
+    }
+
+    /* Status (timer & skor) */
+    .status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .score {
+      font-size: 24px;
+      color: #2c7a1e;
+      font-weight: bold;
+    }
+
+    #timer {
+      color: #d63230;
+      font-size: 20px;
+    }
+
+    #question-image {
+      margin-top: 5px;
+      max-width: 50%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      display: none;
+    }
+
+    /* Game Over Overlay */
+    #game-over {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+
+    #game-over .score {
+      font-size: 40px;
+    }
+
+    #game-over button {
+      padding: 10px 20px;
+      margin-top: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Animasi feedback overlay */
+    #feedback-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 100px;
+      z-index: 1200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    #feedback-overlay.show {
+      opacity: 1;
+    }
+
+    /* Background warna feedback */
+    #feedback-overlay.correct {
+      background: rgba(0, 255, 0, 0.3);
+    }
+
+    #feedback-overlay.incorrect {
+      background: rgba(255, 0, 0, 0.3);
+    }
+
+    /* Media query untuk smartphone */
+    @media only screen and (max-width: 600px) {
+      #start-screen {
+        max-width: 90%;
+        font-size: 12px;
+      }
+
+      .game-ui {
+        max-width: 85%;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 12px;
+      }
+
+      #start-btn {
+        padding: 15px 30px;
+        font-size: 20px;
+      }
+
+      .score {
+        font-size: 14px;
+      }
+
+      #timer {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Peta sebagai background -->
+  <div id="map"></div>
+  <!-- Feedback overlay untuk animasi jawaban benar/salah -->
+  <div id="feedback-overlay"></div>
+  <!-- Start Screen -->
+  <div id="start-screen" class="overlay">
+    <h2>Selamat Datang di Tebak Koordinat Budaya Nusantara!</h2>
+    <p>Masukkan nama Anda untuk memulai permainan:</p>
+    <input id="player-name-input" type="text" placeholder="Nama Anda">
+    <br>
+    <button id="start-btn" onclick="startGame()">Mulai Game!</button>
+    <p style="text-align: left; margin-top: 15px;">
+      <strong>Instruksi Permainan:</strong>
+    <ul style="text-align: justify;">
+      <li>Anda akan melihat peta Indonesia secara penuh.</li>
+      <li>Setiap pertanyaan akan meminta Anda menunjukkan lokasi suatu budaya atau tempat bersejarah.</li>
+      <li>Klik pada peta untuk memilih lokasi yang menurut Anda benar.</li>
+      <li>Jika jarak tebakan Anda kurang dari 50 km dari lokasi yang benar, jawaban dianggap benar.</li>
+      <li>Jika salah, marker lokasi yang benar akan muncul dan peta akan dipusatkan pada lokasi tersebut selama 3 detik.
+      </li>
+      <li>Skor bertambah jika benar, berkurang jika salah.</li>
+      <li>Permainan memiliki waktu terbatas.</li>
+    </ul>
+    </p>
+  </div>
+  <!-- Game UI -->
+  <div class="game-ui">
+    <h3>Tebak Lokasi Budaya!</h3>
+    <div class="status">
+      <div id="timer">Waktu: 60 detik</div>
+      <div class="score">Poin: <span id="score">100</span></div>
+    </div>
+    <p id="question"></p>
+    <img id="question-image" src="" alt="Gambar Soal">
+    <button onclick="nextQuestion()">Lewati Pertanyaan</button>
+  </div>
+  <!-- Game Over Overlay -->
+  <div id="game-over" class="overlay">
+    <h2>Waktu Habis! ⏳</h2>
+    <p>Skor Akhir Anda:</p>
+    <div class="score"><span id="final-score">100</span></div>
+    <p>Nama: <span id="final-name"></span></p>
+    <button onclick="location.reload()">Main Lagi</button>
+    <button onclick="goToLeaderboard()">Lihat Leaderboard</button>
+  </div>
+
+  <!-- Script Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <!-- Script Firebase dan kode game (menggunakan type module) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    // Konfigurasi Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfv1X820E0pA6xr12GBBCof50yiJt-3A0",
+      authDomain: "p5-db-522b6.firebaseapp.com",
+      projectId: "p5-db-522b6",
+      storageBucket: "p5-db-522b6.firebasestorage.app",
+      messagingSenderId: "541847612293",
+      appId: "1:541847612293:web:5e5edd184b3811253472ec",
+      measurementId: "G-X5YG6G9J4B"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Fungsi untuk menyimpan skor ke Firestore
+    async function saveScoreToFirestore(playerName, score) {
+      try {
+        const now = new Date();
+        await addDoc(collection(db, "scores"), {
+          name: playerName,
+          score: score,
+          timestamp: now,                     // Menyimpan objek Date
+          completedAt: now.toLocaleString()   // Menyimpan tanggal & waktu dalam format lokal (misal: "2/6/2025, 10:30:15 AM")
+        });
+        console.log("Skor berhasil disimpan ke Firestore");
+      } catch (error) {
+        console.error("Error menyimpan skor: ", error);
+      }
+    }
+
+    // Fungsi untuk pindah ke halaman leaderboard
+    window.goToLeaderboard = function () {
+      window.location.href = 'leaderboard.html';
+    };
+
+    // Inisialisasi peta
+    const map = L.map('map').setView([-2.5489, 118.0149], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    // Array data soal akan dimuat dari Firestore (koleksi "questions")
+    let culturalLocations = [];
+    async function loadQuestions() {
+      try {
+        const q = query(collection(db, "questions"), orderBy("name", "asc"));
+        const querySnapshot = await getDocs(q);
+        culturalLocations = [];
+        querySnapshot.forEach((docSnap) => {
+          // Data disimpan dengan struktur: name, coord (misalnya 'lat,lng'), image (opsional)
+          const data = docSnap.data();
+          // Konversi koordinat ke array angka
+          let coord = data.coord;
+          if (typeof coord === 'string') {
+            coord = coord.split(',').map(v => parseFloat(v.trim()));
+          }
+          culturalLocations.push({
+            name: data.name,
+            coord: coord,
+            image: data.image || ""
+          });
+        });
+      } catch (error) {
+        console.error("Error memuat soal: ", error);
+      }
+    }
+
+    // Variabel game
+    let currentQuestion = null;
+    let score = 100;
+    let markers = [];
+    let usedQuestions = [];
+    let timeLeft = 60;
+    let timerInterval;
+    let isGameActive = false;
+    let playerName = "";
+
+    // Fungsi animasi feedback (benar/salah)
+    function showFeedback(isCorrect) {
+      const overlay = document.getElementById("feedback-overlay");
+      overlay.classList.remove("correct", "incorrect");
+      if (isCorrect) {
+        overlay.classList.add("correct");
+        overlay.innerHTML = "👍";
+      } else {
+        overlay.classList.add("incorrect");
+        overlay.innerHTML = "✖️";
+      }
+      overlay.classList.add("show");
+      setTimeout(() => {
+        overlay.classList.remove("show");
+      }, 1500);
+    }
+
+    // Mulai permainan: validasi input nama & muat soal dari Firestore
+    window.startGame = async function () {
+      const nameInput = document.getElementById('player-name-input').value.trim();
+      if (!nameInput) {
+        alert("Silakan masukkan nama Anda terlebih dahulu.");
+        return;
+      }
+      playerName = nameInput;
+      score = 100;
+      timeLeft = 60;
+      usedQuestions = [];
+      isGameActive = true;
+
+      document.getElementById('start-screen').style.display = 'none';
+      document.querySelector('.game-ui').style.display = 'block';
+      document.getElementById('score').textContent = score;
+      document.getElementById('timer').textContent = `Waktu: ${timeLeft} detik`;
+
+      map.invalidateSize();
+
+      // Muat soal dari Firestore sebelum mulai permainan
+      await loadQuestions();
+      if (culturalLocations.length === 0) {
+        alert("Belum ada soal yang tersedia. Silakan tambahkan soal melalui halaman Manage Questions.");
+        return;
+      }
+
+      startTimer();
+      generateQuestion();
+    };
+
+    // Timer permainan
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').textContent = `Waktu: ${timeLeft} detik`;
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    // Akhiri permainan
+    function endGame() {
+      isGameActive = false;
+      clearInterval(timerInterval);
+      document.getElementById('game-over').style.display = 'block';
+      document.querySelector('.game-ui').style.display = 'none';
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('final-name').textContent = playerName;
+      saveScoreToFirestore(playerName, score);
+    }
+
+    // Ambil soal secara acak dari array culturalLocations
+    function getRandomQuestion() {
+      if (usedQuestions.length >= culturalLocations.length) {
+        usedQuestions = [];
+      }
+      const availableQuestions = culturalLocations.filter(q => !usedQuestions.includes(q));
+      const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+      const question = availableQuestions[randomIndex];
+      usedQuestions.push(question);
+      return question;
+    }
+
+    // Tampilkan pertanyaan dan gambar (jika ada)
+    function generateQuestion() {
+      currentQuestion = getRandomQuestion();
+      document.getElementById('question').textContent = `Tunjukkan lokasi ${currentQuestion.name} di peta!`;
+      if (currentQuestion.image) {
+        const imgEl = document.getElementById('question-image');
+        imgEl.src = currentQuestion.image;
+        imgEl.style.display = 'block';
+      } else {
+        document.getElementById('question-image').style.display = 'none';
+      }
+    }
+
+    // Perbarui skor
+    function updateScore(isCorrect) {
+      if (isCorrect) score += 50;
+      else score = Math.max(0, score - 30);
+      document.getElementById('score').textContent = score;
+    }
+
+    // Tangani klik pada peta untuk menjawab
+    map.on('click', function (e) {
+      if (!isGameActive) return;
+      if (confirm("Apakah Anda yakin dengan pilihan ini?")) {
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+
+        const guessMarker = L.marker(e.latlng).addTo(map);
+        markers.push(guessMarker);
+
+        const guessCoord = e.latlng;
+        const correctCoord = currentQuestion.coord;
+        const distance = map.distance(guessCoord, correctCoord);
+        const isCorrect = distance < 50000;
+
+        updateScore(isCorrect);
+        showFeedback(isCorrect);
+
+        if (!isCorrect) {
+          map.panTo(correctCoord);
+          const correctMarker = L.marker(correctCoord).addTo(map);
+          markers.push(correctMarker);
+          L.popup()
+            .setLatLng(correctCoord)
+            .setContent(`Lokasi sebenarnya<br>${currentQuestion.name}`)
+            .openOn(map);
+          setTimeout(() => {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            map.closePopup();
+            nextQuestion();
+          }, 3000);
+        } else {
+          L.popup()
+            .setLatLng(correctCoord)
+            .setContent(`Lokasi sebenarnya<br>${currentQuestion.name}`)
+            .openOn(map);
+          setTimeout(nextQuestion, 1500);
+        }
+      }
+    });
+
+    // Lanjut ke pertanyaan berikutnya
+    window.nextQuestion = function () {
+      if (!isGameActive) return;
+      markers.forEach(marker => map.removeLayer(marker));
+      markers = [];
+      map.closePopup();
+      generateQuestion();
+    };
+  </script>
+</body>
+
+</html>
